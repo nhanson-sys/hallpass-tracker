@@ -4,7 +4,7 @@ import 'firebase/compat/database';
 
 // Initialize Firebase (Only once)
 const firebaseConfig = {
-  apiKey: "AIzaSyD6vGTnYuNK0yoKswcphz99UEJxG3C9PQU",
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: "hallpass-tracker-3476e.firebaseapp.com",
   databaseURL: "https://hallpass-tracker-3476e-default-rtdb.firebaseio.com",
   projectId: "hallpass-tracker-3476e",
