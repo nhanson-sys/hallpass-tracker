@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ref, push, onValue } from 'firebase/database';
+import { ref, push, onValue, update, get, query, orderByChild, equalTo } from 'firebase/database';
 import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { db, auth } from '../firebase';
 
@@ -85,6 +85,7 @@ export default function Kiosk() {
     return 'bg-red';
   };
 
+  // --- SIGN OUT LOGIC ---
   const handleSignOut = async (e) => {
     e.preventDefault();
     setErrorMsg(''); setSuccessMsg('');
@@ -128,6 +129,43 @@ export default function Kiosk() {
       setStudentId(''); setReason('Restroom'); setOtherReason('');
       setTimeout(() => setSuccessMsg(''), 3000);
     } catch (err) { setErrorMsg('Database error.'); }
+  };
+
+  // --- SIGN IN LOGIC ---
+  const handleSignIn = async (e) => {
+    e.preventDefault();
+    setErrorMsg(''); setSuccessMsg('');
+    const id = studentId.trim().toUpperCase();
+    if (id.length !== 5) return setErrorMsg('Please enter a valid 5-character ID.');
+
+    try {
+      const passesRef = ref(db, 'passes');
+      // Query Firebase for all passes matching this student ID
+      const studentQuery = query(passesRef, orderByChild('studentId'), equalTo(id));
+      const snapshot = await get(studentQuery);
+
+      let passToReturn = null;
+      if (snapshot.exists()) {
+        // Find the active one
+        snapshot.forEach((child) => {
+          if (child.val().returned === false) {
+            passToReturn = child.key;
+          }
+        });
+      }
+
+      if (passToReturn) {
+        await update(ref(db, `passes/${passToReturn}`), { returned: true });
+        setSuccessMsg('Welcome back! You are signed in.');
+        setStudentId('');
+        setTimeout(() => setSuccessMsg(''), 3000);
+      } else {
+        setErrorMsg('No active pass found for this ID.');
+      }
+    } catch (err) { 
+      console.error(err);
+      setErrorMsg('Database error while signing in.'); 
+    }
   };
 
   // UI: UNAUTHORIZED KIOSK
@@ -175,7 +213,7 @@ export default function Kiosk() {
           </div>
         )}
 
-        <form onSubmit={handleSignOut} style={{ display: 'flex', flexDirection: 'column', gap: '16px', textAlign: 'left' }}>
+        <form style={{ display: 'flex', flexDirection: 'column', gap: '16px', textAlign: 'left' }}>
           <input type="text" placeholder="5-Character ID" value={studentId} onChange={(e) => setStudentId(e.target.value)} maxLength={5} style={{ textTransform: 'uppercase', textAlign: 'center', fontSize: '24px', letterSpacing: '2px' }} />
           
           <select value={reason} onChange={e => setReason(e.target.value)}>
@@ -191,7 +229,10 @@ export default function Kiosk() {
              <input type="text" placeholder="Explain reason..." value={otherReason} onChange={e => setOtherReason(e.target.value)} />
           )}
 
-          <button type="submit" style={{ padding: '16px', fontSize: '16px', marginTop: '8px' }}>Sign Out</button>
+          <div style={{ display: 'flex', gap: '16px', marginTop: '8px' }}>
+            <button type="button" onClick={handleSignOut} style={{ flex: 1, padding: '16px', fontSize: '16px' }}>Sign Out</button>
+            <button type="button" onClick={handleSignIn} className="secondary-btn" style={{ flex: 1, padding: '16px', fontSize: '16px' }}>Sign In</button>
+          </div>
         </form>
 
         {errorMsg && <div style={{ color: '#d93025', marginTop: '16px', fontWeight: '500' }}>{errorMsg}</div>}
