@@ -6,10 +6,8 @@ import TeacherDashboard from './components/TeacherDashboard';
 function App() {
   return (
     <Router>
-      <div className="navbar">
-        <Link to="/">Student Kiosk</Link>
-        <Link to="/teacher">Teacher Dashboard</Link>
-      </div>
+     <Header />
+      <div style={{ padding: '20px' }}>
       <Routes>
         <Route path="/" element={<Kiosk />} />
         <Route path="/teacher" element={<TeacherDashboard />} />
