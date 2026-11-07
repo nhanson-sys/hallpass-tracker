@@ -230,8 +230,38 @@ export default function Kiosk() {
           )}
 
           <div style={{ display: 'flex', gap: '16px', marginTop: '8px' }}>
-            <button type="button" onClick={handleSignOut} style={{ flex: 1, padding: '16px', fontSize: '16px' }}>Sign Out</button>
-            <button type="button" onClick={handleSignIn} className="secondary-btn" style={{ flex: 1, padding: '16px', fontSize: '16px' }}>Sign In</button>
+            <button 
+              type="button" 
+              onClick={handleSignOut} 
+              style={{ 
+                flex: 1, 
+                padding: '16px', 
+                fontSize: '16px', 
+                backgroundColor: '#1a73e8', 
+                color: 'white', 
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer'
+              }}
+            >
+              Sign Out
+            </button>
+            <button 
+              type="button" 
+              onClick={handleSignIn} 
+              style={{ 
+                flex: 1, 
+                padding: '16px', 
+                fontSize: '16px', 
+                backgroundColor: '#1e8e3e', 
+                color: 'white', 
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer'
+              }}
+            >
+              Sign In
+            </button>
           </div>
         </form>
 
