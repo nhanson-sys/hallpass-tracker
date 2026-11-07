@@ -1,0 +1,65 @@
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background-color: #f4f7f8;
+  color: #334155;
+  margin: 0;
+  padding: 0;
+}
+
+h1, h2, h3 { color: #0f172a; }
+
+/* Buttons */
+button {
+  background-color: #2563eb;
+  color: white;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: background-color 0.2s;
+}
+button:hover { background-color: #1d4ed8; }
+.secondary-btn { background-color: #64748b; }
+.secondary-btn:hover { background-color: #475569; }
+.danger-btn { background-color: #dc2626; }
+.danger-btn:hover { background-color: #b91c1c; }
+
+/* Inputs */
+input {
+  padding: 10px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 15px;
+  outline: none;
+}
+input:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+
+/* Layout Cards */
+.card {
+  background: white;
+  padding: 24px;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  margin-bottom: 24px;
+}
+.emergency-card { background-color: #fef2f2; border: 1px solid #fecaca; }
+
+/* Tables */
+table { width: 100%; border-collapse: collapse; }
+th { background-color: #f8fafc; font-weight: 600; padding: 12px 16px; border-bottom: 2px solid #e2e8f0; }
+td { padding: 16px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+
+/* Nav Bar */
+.navbar {
+  background-color: white;
+  padding: 16px 24px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  margin-bottom: 30px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 20px;
+}
+.navbar a { text-decoration: none; color: #475569; font-weight: 600; }
+.navbar a:hover { color: #2563eb; }
