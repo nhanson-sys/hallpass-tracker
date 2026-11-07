@@ -20,8 +20,8 @@ export default function Header() {
 
   return (
     <div style={tabContainerStyle}>
-      <NavLink to="/kiosk" style={getTabStyle}>Student Kiosk</NavLink>
-      <NavLink to="/dashboard" style={getTabStyle}>Teacher Dashboard</NavLink>
+      <NavLink to="/" style={getTabStyle}>Student Kiosk</NavLink>
+      <NavLink to="/teacher" style={getTabStyle}>Teacher Dashboard</NavLink>
     </div>
   );
 }
