@@ -1,57 +1,73 @@
 import React, { useState, useEffect } from 'react';
 import { ref, onValue, update, push } from 'firebase/database';
-import { db } from '../firebase';
+import { signInWithEmailAndPassword, onAuthStateChanged, signOut } from 'firebase/auth';
+import { db, auth } from '../firebase';
 
 export default function TeacherDashboard() {
+  const [user, setUser] = useState(null);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  
   const [activePasses, setActivePasses] = useState([]);
   const [studentNames, setStudentNames] = useState({});
   const [setupRoomId, setSetupRoomId] = useState('');
   const [emergencyId, setEmergencyId] = useState('');
-  
-  // Load Local Roster on Mount
-  useEffect(() => {
-    const savedRoster = localStorage.getItem('local_student_roster');
-    if (savedRoster) {
-      setStudentNames(JSON.parse(savedRoster));
-    }
 
-    // Listen to Active Passes
+  // Authentication Listener
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Data Listeners (Only run if logged in)
+  useEffect(() => {
+    if (!user) return;
+    
+    const savedRoster = localStorage.getItem('local_student_roster');
+    if (savedRoster) setStudentNames(JSON.parse(savedRoster));
+
     const passesRef = ref(db, 'passes');
     const unsubscribe = onValue(passesRef, (snapshot) => {
       const passes = [];
       snapshot.forEach((child) => {
-        const pass = child.val();
-        if (pass.returned === false) {
-          passes.push({ id: child.key, ...pass });
+        if (child.val().returned === false) {
+          passes.push({ id: child.key, ...child.val() });
         }
       });
       setActivePasses(passes);
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [user]);
 
-  // --- CSV Roster Upload ---
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+    } catch (err) {
+      alert("Invalid email or password.");
+    }
+  };
+
+  const handleLogout = () => signOut(auth);
+
+  // --- Handlers ---
   const handleLocalCsvUpload = (event) => {
     const file = event.target.files[0];
     if (!file) return;
-
     const reader = new FileReader();
     reader.onload = (e) => {
       const lines = e.target.result.split(/\r?\n/);
       const mapping = {};
-
       lines.forEach(line => {
         const parts = line.split(',');
         if (parts.length >= 2) {
           const id = parts[0].trim().toUpperCase();
-          const name = parts[1].trim();
-          if (id.length === 5) {
-            mapping[id] = name;
-          }
+          if (id.length === 5) mapping[id] = parts[1].trim();
         }
       });
-
       setStudentNames(mapping);
       localStorage.setItem('local_student_roster', JSON.stringify(mapping));
       alert("Local roster updated!");
@@ -59,7 +75,6 @@ export default function TeacherDashboard() {
     reader.readAsText(file);
   };
 
-  // --- Kiosk Setup ---
   const handleAuthorizeKiosk = () => {
     if (!setupRoomId) return alert("Please enter a room ID.");
     const token = Math.random().toString(36).substring(2) + Date.now().toString(36);
@@ -72,136 +87,96 @@ export default function TeacherDashboard() {
   const handleDeauthorize = () => {
     localStorage.removeItem('kiosk_room_id');
     localStorage.removeItem('kiosk_auth_token');
-    alert("Kiosk authorization removed from this device.");
+    alert("Kiosk authorization removed.");
     window.location.reload();
   };
 
-  // --- Emergency Override ---
   const handleEmergencyUse = async (e) => {
     e.preventDefault();
     const id = emergencyId.trim().toUpperCase();
     if (id.length !== 5) return alert('Enter a valid 5-character ID');
-    
-    // Grabs the room ID from the teacher's configured kiosk state
     const currentRoom = localStorage.getItem('kiosk_room_id') || 'Unknown';
-
     try {
       await push(ref(db, 'passes'), {
-        studentId: id,
-        roomId: currentRoom,
-        reason: 'Emergency Override',
-        timestamp: Date.now(),
-        returned: false,
-        emergency: true
+        studentId: id, roomId: currentRoom, reason: 'Emergency Override',
+        timestamp: Date.now(), returned: false, emergency: true
       });
       setEmergencyId('');
-      alert("Emergency pass granted.");
-    } catch (err) {
-      console.error(err);
-      alert("Error creating emergency pass.");
-    }
+    } catch (err) { alert("Error creating pass."); }
   };
 
-  // --- Return Student ---
   const handleReturn = async (passId) => {
-    try {
-      const passRef = ref(db, `passes/${passId}`);
-      await update(passRef, { returned: true });
-    } catch (err) {
-      console.error(err);
-    }
+    await update(ref(db, `passes/${passId}`), { returned: true });
   };
+
+  if (!user) {
+    return (
+      <div className="card" style={{ maxWidth: '400px', margin: '50px auto', textAlign: 'center' }}>
+        <h2>Staff Login</h2>
+        <form onSubmit={handleLogin}>
+          <input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} style={{ width: '90%', marginBottom: '15px' }} />
+          <input type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} style={{ width: '90%', marginBottom: '15px' }} />
+          <button type="submit" style={{ width: '95%' }}>Login</button>
+        </form>
+      </div>
+    );
+  }
 
   const currentConfiguredRoom = localStorage.getItem('kiosk_room_id');
 
   return (
-    <div style={{ maxWidth: '800px', margin: '0 auto', padding: '20px' }}>
-      <h1>Teacher Dashboard</h1>
+    <div style={{ maxWidth: '900px', margin: '0 auto', padding: '20px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h1>Teacher Dashboard</h1>
+        <button onClick={handleLogout} className="secondary-btn">Sign Out</button>
+      </div>
 
-      {/* 1. Kiosk Management */}
-      <section style={{ border: '1px solid #ccc', padding: '20px', marginBottom: '20px' }}>
+      <section className="card">
         <h2>Device Kiosk Status</h2>
         {currentConfiguredRoom ? (
           <div>
             <p>Status: <strong>Active Kiosk for Room {currentConfiguredRoom}</strong></p>
-            <button onClick={handleDeauthorize} style={{ color: 'red' }}>Deauthorize Device</button>
+            <button onClick={handleDeauthorize} className="danger-btn">Deauthorize Device</button>
           </div>
         ) : (
           <div>
-            <input 
-              type="text" 
-              placeholder="Enter Room Number (e.g. GC102)" 
-              value={setupRoomId}
-              onChange={(e) => setSetupRoomId(e.target.value)}
-            />
-            <button onClick={handleAuthorizeKiosk}>Authorize & Lock to Room</button>
+            <input type="text" placeholder="Room Number (e.g. GC102)" value={setupRoomId} onChange={e => setSetupRoomId(e.target.value)} />
+            <button onClick={handleAuthorizeKiosk}>Authorize & Lock</button>
           </div>
         )}
       </section>
 
-      {/* 2. Roster Management */}
-      <section style={{ border: '1px solid #ccc', padding: '20px', marginBottom: '20px' }}>
+      <section className="card">
         <h2>Local Roster Upload</h2>
-        <p><small>Loads names locally into your browser. Never sent to Firebase. CSV format: <i>ID, Name</i></small></p>
+        <p><small>Names stay in your browser memory for privacy. CSV format: <i>ID, Name</i></small></p>
         <input type="file" accept=".csv" onChange={handleLocalCsvUpload} />
-        <p>Currently loaded: {Object.keys(studentNames).length} students.</p>
+        <p>Loaded: {Object.keys(studentNames).length} students.</p>
       </section>
 
-      {/* 3. Emergency Override */}
-      <section style={{ border: '1px solid #ccc', padding: '20px', marginBottom: '20px', backgroundColor: '#fff3f3' }}>
-        <h2 style={{ color: 'red' }}>🚨 Emergency Override</h2>
-        <form onSubmit={handleEmergencyUse}>
-          <input 
-            type="text" 
-            placeholder="Student ID" 
-            value={emergencyId}
-            onChange={(e) => setEmergencyId(e.target.value)}
-            maxLength={5}
-          />
-          <button type="submit" style={{ backgroundColor: 'red', color: 'white', marginLeft: '10px' }}>
-            Grant Emergency Pass
-          </button>
+      <section className="card emergency-card">
+        <h2 style={{ color: '#dc2626', marginTop: 0 }}>🚨 Emergency Override</h2>
+        <form onSubmit={handleEmergencyUse} style={{ display: 'flex', gap: '10px' }}>
+          <input type="text" placeholder="Student ID" value={emergencyId} onChange={e => setEmergencyId(e.target.value)} maxLength={5} />
+          <button type="submit" className="danger-btn">Grant Emergency Pass</button>
         </form>
       </section>
 
-      {/* 4. Active Passes */}
-      <section>
-        <h2>Active Passes (School-wide)</h2>
+      <section className="card">
+        <h2>Active Passes</h2>
         <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse' }}>
           <thead>
-            <tr style={{ borderBottom: '2px solid #ccc' }}>
-              <th>Student</th>
-              <th>Room</th>
-              <th>Time Out</th>
-              <th>Notes</th>
-              <th>Action</th>
-            </tr>
+            <tr><th>Student</th><th>Room</th><th>Time Out</th><th>Notes</th><th>Action</th></tr>
           </thead>
           <tbody>
-            {activePasses.length === 0 ? (
-              <tr><td colSpan="5">No active passes.</td></tr>
-            ) : (
-              activePasses.map(pass => {
-                // Map the ID to the local name if it exists, otherwise just show ID
-                const displayName = studentNames[pass.studentId] 
-                  ? `${studentNames[pass.studentId]} (${pass.studentId})` 
-                  : pass.studentId;
-
-                const timeStr = new Date(pass.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-
-                return (
-                  <tr key={pass.id} style={{ borderBottom: '1px solid #eee' }}>
-                    <td style={{ padding: '10px 0' }}>{displayName}</td>
-                    <td>{pass.roomId}</td>
-                    <td>{timeStr}</td>
-                    <td style={{ color: 'red', fontWeight: 'bold' }}>{pass.emergency ? 'EMERGENCY' : ''}</td>
-                    <td>
-                      <button onClick={() => handleReturn(pass.id)}>Mark Returned</button>
-                    </td>
-                  </tr>
-                );
-              })
-            )}
+            {activePasses.length === 0 ? <tr><td colSpan="5">No active passes.</td></tr> : activePasses.map(pass => (
+              <tr key={pass.id}>
+                <td>{studentNames[pass.studentId] ? `${studentNames[pass.studentId]} (${pass.studentId})` : pass.studentId}</td>
+                <td>{pass.roomId}</td>
+                <td>{new Date(pass.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</td>
+                <td style={{ color: '#dc2626', fontWeight: 'bold' }}>{pass.emergency ? 'EMERGENCY' : ''}</td>
+                <td><button onClick={() => handleReturn(pass.id)}>Return</button></td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </section>
