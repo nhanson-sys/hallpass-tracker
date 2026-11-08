@@ -108,18 +108,14 @@ export default function TeacherDashboard() {
 
   return (
     <div>
-      <div className="navbar">
-        <h1 className="navbar-title">Teacher Dashboard {currentRoom && `- Room ${currentRoom}`}</h1>
-        <div className="navbar-links">
-          <a href="/">Go to Kiosk</a>
-          <button className="secondary-btn" onClick={() => signOut(auth)} style={{ marginLeft: '16px' }}>Sign Out</button>
-        </div>
-      </div>
+      
 
       <div className="container">
         
         {/* Active Passes View */}
         <div className="card header-card">
+          <button className="secondary-btn" onClick={() => signOut(auth)} style={{ marginLeft: '16px' }}>Sign Out</button>
+
           <h2 style={{marginTop: 0}}>Active Passes</h2>
           <table style={{marginTop: 0}}>
             <thead>
